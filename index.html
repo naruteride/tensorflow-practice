@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 코로나 검사기</title>
+</head>
+
+<body>
+    <div>공짜로 코로나 검사해드립니다1!!</div>
+
+    <input type="file" id="image" name="image" accept="image/png, image/jpeg">
+
+    <div class="preview">
+        <p>흉부 엑스레이 사진을 업로드 해주세요!!!</p>
+    </div>
+
+    <div id="label-container"></div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script type="text/javascript">
+        const TFURL = "https://teachablemachine.withgoogle.com/models/FMf9TljIR/";
+
+        let model, webcam, labelContainer, maxPredictions;
+
+        async function init() {
+            const modelURL = TFURL + "model.json";
+            const metadataURL = TFURL + "metadata.json";
+
+            // load the model and metadata
+            // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
+            // or files from your local hard drive
+            // Note: the pose library adds "tmImage" object to your window (window.tmImage)
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) { // class labels
+                labelContainer.appendChild(document.createElement("div"));
+            }
+        }
+
+        async function predict(image) {
+            const prediction = await model.predict(image);
+            for (let i = 0; i < maxPredictions; i++) {
+                let labelName = "";
+                switch (prediction[i].className) {
+                    case "Healthy":
+                        labelName = "짱건강함";
+                        break;
+                    case "covid-19":
+                        labelName = "코로나 걸림!!!";
+                        break;
+                    case "Viral Pneumonia":
+                        labelName = "독감임";
+                        break;
+                    case "Bacterial Pneumonia":
+                        labelName = "박테리아성 폐렴임";
+                        break;
+                    default:
+                        labelName = prediction[i].className
+                }
+                classPrediction = labelName + ": " + prediction[i].probability.toFixed(2);
+
+                labelContainer.childNodes[i].innerHTML = classPrediction;
+            }
+        }
+
+
+        init();
+
+
+
+        const imageInputElement = document.querySelector("#image");
+        const preview = document.querySelector(".preview");
+
+        imageInputElement.addEventListener("change", updateImageDisplay);
+
+        async function updateImageDisplay() {
+            while (preview.firstChild) {
+                preview.removeChild(preview.firstChild);
+            }
+
+            const imageFile = imageInputElement.files[0];
+            const para = document.createElement("p");
+
+            para.textContent = imageFile.name;
+            const previewImage = document.createElement("img");
+            previewImage.src = URL.createObjectURL(imageFile);
+            previewImage.style = `
+                max-width: 20rem;
+            `;
+
+            preview.appendChild(previewImage);
+            preview.appendChild(para);
+            para.textContent = "3초만 기다려주세요!!"
+            preview.appendChild(para);
+
+            imageInputElement.style = `
+                display: none;
+            `;
+
+            await delay(2000);
+
+            await predict(previewImage);
+        }
+
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    </script>
+
+</body>
+
+</html>
